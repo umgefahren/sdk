@@ -1,0 +1,249 @@
+= Developer Workflow
+Hans Larsen <hans@dfinity.org>
+v0.1, 2019-08-29
+:toc:
+
+== Principles and Culture
+- Write for lowest denominator?
+- Guidelines should be automatable
+-
+
+Notes:
+
+- People don't feel empowered to refuse a PR from senior people.
+- Guidelines should say that when a reviewer has too much difficulty, should be split up.
+- Points that make a better org
+- 5 Major Points
+- Reviewer first
+-
+
+- Make the ideal perfect document and enforce it in the SDK. John will back us if we want to do
+  that.
+
+== Goal / Motivation
+
+This document is intended to  but keep on being updated as a living document.
+
+=== References
+
+The following links are used as reference in creating this workflow and processes:
+
+. https://www.atlassian.com/git/tutorials/comparing-workflows/forking-workflow
+. https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow
+. https://datasift.github.io/gitflow/IntroducingGitFlow.html
+. https://medium.com/singlestone/a-git-workflow-using-rebase-1b1210de83e5
+. https://git-scm.com/book/en/v2
+
+== Setting Up Your Environment
+
+In order to develop on the main repository, you first need to fork it using the GitHub `Fork` button (top-right corner). This will create a repository on your GitHub account which is a clone (as if you ran `git clone`) of the main repository. You will be working off that clone, and creating PRs coming from this fork to the main repository.
+
+Once the fork is created, you can `git clone` your fork. This will setup an `origin` remote that points to your fork. You need to add another remote for the upstream repository that you’ll be working with. This looks a bit like this (for the DFINITY repo):
+[source,bash]
+----
+git clone https://github.com/${USER}/dfinity.git
+cd dfinity/
+git remote add upstream https://github.com/dfinity-lab/dfinity.git
+
+git remote -v
+#> origin   git@github.com:${USER}/dfinity.git (fetch)
+#> origin   git@github.com:${USER}/dfinity.git (push)
+#> upstream git@github.com:dfinity-lab/dfinity.git (fetch)
+#> upstream git@github.com:dfinity-lab/dfinity.git (push)
+----
+
+Examples:
+[source,bash]
+----
+git fetch upstream  # Download commits and branches from upstream.
+git checkout master  # This is the local master, following origin/master.
+git pull upstream/master  # Pull the latest changes from upstream into current master.
+git diff upstream/some-branch  # Diff current branch with upstream branch.
+
+# You can also add other remotes if you want to work with other people's forks.
+git remote add john https://github.com/johnw/dfinity.git
+----
+
+Now you will have 2 remotes; `origin` which is the repo you’re working on (and have administrative access to), and `upstream` which is the repo you will download updates and make PRs to.
+
+=== Forking – Analysis
+
+Forking is preferred to working from the main repository for the following reasons:
+
+==== Pros
+
+1. Forking allows people with read only access to the main repo to still submit pull requests and code improvements.
+2. Forking allows grainier access control, separating collaborators into 4 groups: people who have administrative access to the repo (admin), people who can manage branches, tags and manually merge PRs (write), people who can comment, review and approve PRs (collaborators) and people who can access the repo and create pull requests (read).
+3. Forking helps keeping the main repo clean with a limited number of branches and tags. We will visit the branching strategy in a later point.
+4. Temporary branches and work are easier to make and delete, without questioning if your actions affect other people.
+
+==== Cons
+
+1. There is a bit more git knowledge involved; developers need to understand remotes, and diffing, merging and rebasing between remotes. Managing branch refs and `HEAD` might be a bit more complex as well, but with a proper cookbook this is manageable for most people.
+2. You need to keep at least 2 remotes on your local repo, and potentially more when working in collaboration with other people. Most people will only have 2.
+
+==== FAQ
+
+1. **Can I leak code by making my forked repo public on GitHub?** No. Private repos are managed differently on GitHub. You won’t be able to make your private repository public.
+2. **Do I need a paid account to fork a private repo?** No.
+3. **What happens when I lose access to the DFINITY repos?** [You will also lose access to the fork]. Any clone you might have locally will stay (same as if you cloned the original repo).
+4. **What if I accidentally commit to `origin/master` or screw up?** Good news, you can reset your `master` (or any) branch to the upstream by running `git reset --hard upstream/master`.
+
+=== Cookbook
+
+1. To get the latest changes from master in your branch:
+[source,bash]
+----
+git checkout my-branch  # Can be master.
+git pull upstream master
+----
+2. To push your changes to your origin:
+[source,bash]
+----
+git branch --set-upstream-to origin ${BRANCH_NAME}  # or -u
+git push  # no need to specify the upstream branch anymore.
+----
+
+=== Starting Work
+
+Branches on your fork are entirely managed by yourself. You can create new ones, delete old ones, rework history if you wish. If someone add your repository to their remotes, they will download a different repo and will not affect your work.
+
+To start new work (e.g. on a bug fix), just create a branch off the branch you want, and start working.
+[source,bash]
+----
+git checkout master
+git checkout -b fix-1234
+----
+
+After your change is done (don’t forget the tests), you should commit your work locally to your branch, and upload it to your `origin`.
+[source,bash]
+----
+git add .
+git commit -m 'fix: update the matrix confabulator'
+git push
+----
+
+To get the code in the main repository, create a PR by going to the GitHub link. The commits included in the PR should be the minimum amount of commits that follow these points.
+
+1. Commits should be meaningful. A good commit should improve the codebase. Renaming a variable without any reasons might not be meaningful work and should be avoided.
+2. Commits should be self contained. A reader should not need information contained in a future commit to understand the purpose of a commit he’s looking at.
+3. A commit should be indivisible; that is, breaking it down further should result in either its work not being done (e.g. a feature not working or a bug not fixed), or the code not to compile, or any test to fail.
+4. A commit should do one thing and one thing only; if it is possible to break down the commit further while having 2 atomic commits, it should be broken down. An example of this would be a commit that add both a new feature and the documentation for the feature itself. This commit could be split into a documentation and a feature commit.
+
+=== Squashing / Rebasing
+
+In simple cases, your branch will have 1-2 commits to merge into master, and those commits will be self explanatory. In some cases though, the history of the branch could be complex and filled with work-in-progress or temporary commits, and you will probably need to cleanup before creating a PR.
+
+The actual amount of commits and the granularity / coverage of those are left to the developer
+and his reviewer.
+
+This can be done through interactive rebasing:
+[source,bash]
+----
+git rebase -i master  # Or the parent branch you are basing your work on.
+----
+
+This will allow you to rewrite the history of your work the way you want to present it for reviewers, before sending the PR. You have a few options here; you can reorder commits, squash commits together (make them a single commit), edit commits to split them down further, or change the commit message.
+
+Remember: having a clean PR makes the review and merging process faster, easier, and ensure that
+your master branch keep a clean history.
+
+=== Commit Message Guideline
+
+> **_TBD – There is a substantial amount of conventions here that need to be discussed. These
+are supposed to be general guidelines._**
+
+Along with repository files, commits are all the information there is.
+
+Good commit messages serve multiple purposes:
+
+1. They speedup the review process. By having commits be the unit of work, a reviewer can go through large changes quickly and effectively.
+2. Helps writing release notes.
+3. They speedup investigation and audits. After enough time (takes a few months), the git history is really all the context to the code one can get. Knowing why a change was done can be a life saver.
+
+Some rules to keep in mind when writing commit messages:
+
+. Separate the subject line from the body with a blank line.
+. Limit the subject line to 50 characters.
+. Capitalize the subject line, but do not end it with a period. It’s a title.
+. Wrap the body around 80 characters.
+. The subject should explain what this commit is about (use the imperative mood, for example by using “fix”, “add”, instead of “fixed” and “added”).
+. Explain the what and why in the body, not the how, when or who. The code or documentation should already explain in comments about how a feature work. Milestones and JIRA explain the when. Authors should explain the whom.
+. Link to any external information that can be useful:
+.. The commit message must include a link to a JIRA issue if there is one.
+.. The commit message must include a link to an issue, a PR or another commit if those links are useful. You can also use `Closes #1234` lines to automatically close issues or other PRs.
+. The commit message is clear text (no markdown). Lists and bullets are probably okay, but avoid using complex markdown like tables or links.
+. Do not include code examples or usage of a feature in a commit message. Instead use comments and documents in the commit code itself. You can point to those from the message.
+
+==== Additional Readings
+
+There’s a lot of literature and discussion already on how to write a successful commit message. Here’s a few readings:
+
+* [https://who-t.blogspot.com/2009/12/on-commit-messages.html]
+* [https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html]
+* [https://chris.beams.io/posts/git-commit/]
+* [https://code.likeagirl.io/useful-tips-for-writing-better-git-commit-messages-808770609503]
+
+==== Conventional Changelog
+
+There is a method of building changelogs and release notes from the commits (since that’s all the information there is) called `conventional-changelog`. Using this method helps make sure that all information is passed down when building releases.
+
+Defining and extracting metadata regarding a change using `conventional-changelog` (or any other
+method) needs to be discussed separately and will be added to this document later.
+
+==== Reverting a commit
+
+=== Creating a PR
+
+After you’re satisfied with your change’s commit history, create a PR through the GitHub UI.
+
+==== PR template
+
+==== What is a PR?
+
+=== Reviewing a PR
+==== Code Owners
+==== Fixing comments
+
+=== Merging a PR
+
+Using mergify.
+
+== Investigation
+
+> Debugging is like being the detective in a crime movie where you are also the murderer.
+
+=== Bisecting Git History
+=== Annotating Commits
+
+== DFINITY Repository
+=== File Structure
+
+. `README`
+. `CONTRIBUTING`
+. `.github/`
+. `nix/`
+. `...`
+
+=== Directory Structure
+
+=== Branching
+
+Gitflow details.
+
+=== Tagging
+=== Releases
+
+Timings, Naming, Versioning.
+
+==== Hotfixes
+==== Security Fixes
+
+=== Auditing a Repository
+
+== Thirdparty Development
+
+
+== Notes / TODOs
+
+. Give individual and teams some leeway into their own processes. e.g. squashing commits before master
