@@ -35,6 +35,7 @@ pub trait VersionEnv {
 }
 
 /// An environment that is inside a project.
+#[derive(Clone)]
 pub struct InProjectEnvironment {
     version: String,
     config: Config,

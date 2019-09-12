@@ -5,6 +5,7 @@ use crate::lib::api_client::RejectCode;
 pub enum DfxError {
     Clap(clap::Error),
     IO(std::io::Error),
+    Notify(notify::Error),
     ParseInt(std::num::ParseIntError),
     Reqwest(reqwest::Error),
     SerdeCbor(serde_cbor::error::Error),
@@ -60,5 +61,11 @@ impl From<std::io::Error> for DfxError {
 impl From<std::num::ParseIntError> for DfxError {
     fn from(err: std::num::ParseIntError) -> DfxError {
         DfxError::ParseInt(err)
+    }
+}
+
+impl From<notify::Error> for DfxError {
+    fn from(err: notify::Error) -> DfxError {
+        DfxError::Notify(err)
     }
 }
