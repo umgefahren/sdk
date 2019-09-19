@@ -3,6 +3,9 @@ use crate::lib::api_client::ReadRejectCode;
 #[derive(Debug)]
 pub enum BuildErrorKind {
     InvalidExtension(String),
+
+    ActorScriptError(String),
+    IdlCompilerError(String),
 }
 
 // TODO: refactor this enum into a *Kind enum and a struct DfxError.
@@ -17,6 +20,7 @@ pub enum DfxError {
     SerdeJson(serde_json::error::Error),
     Url(reqwest::UrlError),
     WabtError(wabt::Error),
+    Utf8Error(std::str::Utf8Error),
 
     /// An unknown command was used. The argument is the command itself.
     UnknownCommand(String),
@@ -76,5 +80,11 @@ impl From<std::num::ParseIntError> for DfxError {
 impl From<wabt::Error> for DfxError {
     fn from(err: wabt::Error) -> DfxError {
         DfxError::WabtError(err)
+    }
+}
+
+impl From<std::str::Utf8Error> for DfxError {
+    fn from(err: std::str::Utf8Error) -> DfxError {
+        DfxError::Utf8Error(err)
     }
 }

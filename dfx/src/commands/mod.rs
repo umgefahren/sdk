@@ -35,7 +35,7 @@ impl<T> CliCommand<T> {
 }
 
 /// Returns all builtin commands understood by DFx.
-pub fn builtin<T>() -> Vec<CliCommand<T>>
+pub fn builtin<'a, T>() -> Vec<CliCommand<T>>
 where
     T: BinaryCacheEnv + BinaryResolverEnv + ClientEnv + PlatformEnv + ProjectConfigEnv + VersionEnv,
 {

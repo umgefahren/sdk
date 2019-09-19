@@ -30,15 +30,8 @@ where
     b.set_message("Starting up the client...");
     b.enable_steady_tick(80);
 
-    let _child = {
-        let client_pathbuf = env.get_binary_command_path("client")?;
-        let client = client_pathbuf.as_path();
+    let _child = env.get_binary_map().client()?.spawn()?;
 
-        let mut cmd = env.get_binary_command("nodemanager")?;
-        cmd.args(&[client]);
-
-        cmd.spawn()?
-    };
     b.set_message("Pinging the DFINITY client...");
 
     std::thread::sleep(Duration::from_millis(500));

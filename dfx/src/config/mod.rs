@@ -14,18 +14,22 @@ pub fn dfx_version() -> &'static str {
             None => {
                 let version = env!("CARGO_PKG_VERSION");
 
-                #[cfg(debug_assertions)]
-                {
-                    DFX_VERSION = Some(format!(
-                        "{}-{}",
-                        version,
-                        std::env::var("DFX_TIMESTAMP_DEBUG_MODE_ONLY")
-                            .unwrap_or_else(|_| "local-debug".to_owned())
-                    ));
+                if is_debug() {
+                    DFX_VERSION = Some(format!("{}-debug", version,));
                 }
 
                 dfx_version()
             }
         }
     }
+}
+
+#[cfg(debug_assertions)]
+pub(super) fn is_debug() -> bool {
+    true
+}
+
+#[cfg(not(debug_assertions))]
+pub(super) fn is_debug() -> bool {
+    false
 }

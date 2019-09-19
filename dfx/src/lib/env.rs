@@ -1,10 +1,161 @@
 use crate::config::dfinity::Config;
-use crate::config::{cache, dfx_version};
+use crate::config::{cache, dfx_version, is_debug};
 use crate::lib::api_client::{Client, ClientConfig};
-use crate::lib::error::DfxResult;
+use crate::lib::error::DfxError::BuildError;
+use crate::lib::error::{BuildErrorKind, DfxError, DfxResult};
 use std::cell::RefCell;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command};
+
+pub struct ActorScriptCommandBuilder<'a> {
+    binary_path: PathBuf,
+    input_path: Option<&'a str>,
+    output_path: Option<&'a str>,
+    idl: bool,
+}
+
+impl<'a> ActorScriptCommandBuilder<'a> {
+    pub(self) fn new(version: &str) -> DfxResult<ActorScriptCommandBuilder> {
+        Ok(ActorScriptCommandBuilder {
+            binary_path: cache::get_binary_path_from_version(version, "asc")?,
+            input_path: None,
+            output_path: None,
+            idl: false,
+        })
+    }
+
+    pub fn input(&mut self, p: &'a Path) -> &mut Self {
+        self.input_path = Some(p.to_str().unwrap());
+        self
+    }
+    pub fn output(&mut self, p: &'a Path) -> &mut Self {
+        self.output_path = Some(p.to_str().unwrap());
+        self
+    }
+    pub fn build_idl(&mut self) -> &mut Self {
+        self.idl = true;
+        self
+    }
+
+    pub fn exec(&self) -> DfxResult {
+        let mut cmd = Command::new(self.binary_path.clone());
+
+        if let Some(ip) = self.input_path {
+            cmd.arg(ip);
+        }
+        if let Some(op) = self.output_path {
+            cmd.args(&["-o", op]);
+        }
+        if self.idl {
+            cmd.arg("--idl");
+        }
+
+        let output = cmd.output()?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            let err = std::str::from_utf8(output.stderr.as_slice())?;
+            Err(BuildError(BuildErrorKind::ActorScriptError(err.to_owned())))
+        }
+    }
+}
+
+pub struct IdlCompilerCommandBuilder<'a> {
+    binary_path: PathBuf,
+    input_path: Option<&'a str>,
+    output_path: Option<&'a str>,
+    js: bool,
+}
+
+impl<'a> IdlCompilerCommandBuilder<'a> {
+    pub(self) fn new(version: &str) -> DfxResult<IdlCompilerCommandBuilder> {
+        Ok(IdlCompilerCommandBuilder {
+            binary_path: cache::get_binary_path_from_version(version, "didc")?,
+            input_path: None,
+            output_path: None,
+            js: false,
+        })
+    }
+
+    pub fn input(&mut self, p: &'a Path) -> &mut Self {
+        self.input_path = Some(p.to_str().unwrap());
+        self
+    }
+    pub fn output(&mut self, p: &'a Path) -> &mut Self {
+        self.output_path = Some(p.to_str().unwrap());
+        self
+    }
+    pub fn build_js(&mut self) -> &mut Self {
+        self.js = true;
+        self
+    }
+
+    pub fn exec(&self) -> DfxResult {
+        let mut cmd = Command::new(self.binary_path.clone());
+
+        if let Some(ip) = self.input_path {
+            cmd.arg(ip);
+        }
+        if let Some(op) = self.output_path {
+            cmd.args(&["-o", op]);
+        }
+        if self.js {
+            cmd.arg("--js");
+        }
+
+        let output = cmd.output()?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            let err = std::str::from_utf8(output.stderr.as_slice())?;
+            Err(BuildError(BuildErrorKind::IdlCompilerError(err.to_owned())))
+        }
+    }
+}
+
+pub struct ClientCommandBuilder {
+    nodemanager_path: PathBuf,
+    client_path: PathBuf,
+}
+
+impl ClientCommandBuilder {
+    pub(self) fn new(version: &str) -> DfxResult<ClientCommandBuilder> {
+        Ok(ClientCommandBuilder {
+            nodemanager_path: cache::get_binary_path_from_version(version, "nodemanager")?,
+            client_path: cache::get_binary_path_from_version(version, "client")?,
+        })
+    }
+
+    pub fn spawn(&self) -> DfxResult<Child> {
+        Command::new(self.nodemanager_path.as_path())
+            .arg(self.client_path.as_path())
+            .spawn()
+            .map_err(DfxError::from)
+    }
+}
+
+pub trait BinaryMap {
+    fn actorscript_compiler(&self) -> DfxResult<ActorScriptCommandBuilder>;
+    fn idl_compiler(&self) -> DfxResult<IdlCompilerCommandBuilder>;
+    fn client(&self) -> DfxResult<ClientCommandBuilder>;
+}
+
+pub struct VersionedBinaryMap {
+    version: String,
+}
+
+impl BinaryMap for VersionedBinaryMap {
+    fn actorscript_compiler(&self) -> DfxResult<ActorScriptCommandBuilder> {
+        ActorScriptCommandBuilder::new(self.version.as_str())
+    }
+    fn idl_compiler(&self) -> DfxResult<IdlCompilerCommandBuilder> {
+        IdlCompilerCommandBuilder::new(self.version.as_str())
+    }
+    fn client(&self) -> DfxResult<ClientCommandBuilder> {
+        ClientCommandBuilder::new(self.version.as_str())
+    }
+}
 
 /// An environment that contains the platform and general environment.
 pub trait PlatformEnv {
@@ -19,8 +170,7 @@ pub trait BinaryCacheEnv {
 
 /// An environment that can resolve binaries from the user-level cache.
 pub trait BinaryResolverEnv {
-    fn get_binary_command_path(&self, binary_name: &str) -> io::Result<PathBuf>;
-    fn get_binary_command(&self, binary_name: &str) -> io::Result<std::process::Command>;
+    fn get_binary_map(&self) -> &'_ BinaryMap;
 }
 
 /// An environment that can get the project configuration.
@@ -44,6 +194,7 @@ pub struct InProjectEnvironment {
     version: String,
     config: Config,
     client: RefCell<Option<Client>>,
+    binary_map: VersionedBinaryMap,
 }
 
 impl PlatformEnv for InProjectEnvironment {
@@ -55,6 +206,10 @@ impl PlatformEnv for InProjectEnvironment {
 
 impl BinaryCacheEnv for InProjectEnvironment {
     fn is_installed(&self) -> io::Result<bool> {
+        if is_debug() {
+            // A debug version is NEVER installed (we always reinstall it).
+            return Ok(false);
+        }
         cache::is_version_installed(self.version.as_str())
     }
     fn install(&self) -> io::Result<()> {
@@ -62,12 +217,9 @@ impl BinaryCacheEnv for InProjectEnvironment {
     }
 }
 
-impl BinaryResolverEnv for InProjectEnvironment {
-    fn get_binary_command_path(&self, binary_name: &str) -> io::Result<PathBuf> {
-        cache::get_binary_path_from_version(self.version.as_str(), binary_name)
-    }
-    fn get_binary_command(&self, binary_name: &str) -> io::Result<std::process::Command> {
-        cache::binary_command_from_version(self.version.as_str(), binary_name)
+impl<'a> BinaryResolverEnv for InProjectEnvironment {
+    fn get_binary_map(&self) -> &'_ BinaryMap {
+        &self.binary_map
     }
 }
 
@@ -111,20 +263,23 @@ impl VersionEnv for InProjectEnvironment {
 impl InProjectEnvironment {
     pub fn from_current_dir() -> DfxResult<InProjectEnvironment> {
         let config = Config::from_current_dir()?;
+        let version = config
+            .get_config()
+            .get_dfx()
+            .unwrap_or_else(|| dfx_version().to_owned());
 
         Ok(InProjectEnvironment {
-            version: config
-                .get_config()
-                .get_dfx()
-                .unwrap_or_else(|| dfx_version().to_owned()),
+            version: version.clone(),
             config,
             client: RefCell::new(None),
+            binary_map: VersionedBinaryMap { version },
         })
     }
 }
 
 pub struct GlobalEnvironment {
     version: String,
+    binary_map: VersionedBinaryMap,
 }
 
 impl PlatformEnv for GlobalEnvironment {
@@ -135,6 +290,10 @@ impl PlatformEnv for GlobalEnvironment {
 
 impl BinaryCacheEnv for GlobalEnvironment {
     fn is_installed(&self) -> io::Result<bool> {
+        if is_debug() {
+            // A debug version is NEVER installed (we always reinstall it).
+            return Ok(false);
+        }
         cache::is_version_installed(self.version.as_str())
     }
     fn install(&self) -> io::Result<()> {
@@ -143,11 +302,8 @@ impl BinaryCacheEnv for GlobalEnvironment {
 }
 
 impl BinaryResolverEnv for GlobalEnvironment {
-    fn get_binary_command_path(&self, binary_name: &str) -> std::io::Result<PathBuf> {
-        cache::get_binary_path_from_version(self.version.as_str(), binary_name)
-    }
-    fn get_binary_command(&self, binary_name: &str) -> std::io::Result<std::process::Command> {
-        cache::binary_command_from_version(self.version.as_str(), binary_name)
+    fn get_binary_map(&self) -> &'_ BinaryMap {
+        &self.binary_map
     }
 }
 
@@ -174,8 +330,10 @@ impl VersionEnv for GlobalEnvironment {
 
 impl GlobalEnvironment {
     pub fn from_current_dir() -> DfxResult<GlobalEnvironment> {
+        let version = dfx_version().to_owned();
         Ok(GlobalEnvironment {
-            version: dfx_version().to_owned(),
+            version: version.clone(),
+            binary_map: VersionedBinaryMap { version },
         })
     }
 }
