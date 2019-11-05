@@ -11,6 +11,7 @@ mod ide;
 mod new;
 mod start;
 mod stop;
+mod ide;
 
 pub type CliExecFn<T> = fn(&T, &ArgMatches<'_>) -> DfxResult;
 pub struct CliCommand<T> {
