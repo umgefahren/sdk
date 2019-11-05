@@ -7,7 +7,6 @@ use clap::ArgMatches;
 mod build;
 mod canister;
 mod config;
-mod ide;
 mod new;
 mod start;
 mod stop;
