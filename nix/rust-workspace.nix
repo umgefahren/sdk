@@ -3,6 +3,7 @@
 , doFmt ? false
 , doDoc ? false
 , motoko
+, vscode-motoko
 , buildDfinityRustPackage
 , cargo-graph
 , darwin
@@ -37,6 +38,7 @@ drv.overrideAttrs (oldAttrs: {
     cp ${motoko.mo-ide}/bin/mo-ide $out
     cp ${motoko.didc}/bin/didc $out
     cp ${motoko.rts}/rts/mo-rts.wasm $out
+    cp ${vscode-motoko.vsix}/${vscode-motoko.vsix.name}.vsix $out
     mkdir $out/stdlib && cp -R ${motoko.stdlib}/. $out/stdlib
   '';
 
