@@ -6,6 +6,7 @@ use clap::ArgMatches;
 
 mod build;
 mod canister;
+mod code;
 mod config;
 mod new;
 mod start;
@@ -49,5 +50,6 @@ where
         CliCommand::new(start::construct(), start::exec),
         CliCommand::new(stop::construct(), stop::exec),
         CliCommand::new(ide::construct(), ide::exec),
+        CliCommand::new(code::construct(), code::exec),
     ]
 }

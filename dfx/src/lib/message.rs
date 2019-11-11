@@ -26,6 +26,7 @@ pub enum UserMessage {
     NodeAddress,
     StartBackground,
     StartIDE,
+    StartCode,
 }
 
 impl UserMessage {
@@ -75,7 +76,10 @@ impl UserMessage {
             UserMessage::StartBackground => "Exits the dfx leaving the client running. Will wait until the client replies before exiting.",
 
             // dfx ide
-            UserMessage::StartIDE => "Starts Motoko IDE Language Server"
+            UserMessage::StartIDE => "Starts Motoko IDE Language Server",
+
+            // dfx code
+            UserMessage::StartCode => "Starts the Mokoto IDE",
         }
     }
 }
