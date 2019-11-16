@@ -1,5 +1,6 @@
 use crate::lib::env::{
-    BinaryCacheEnv, BinaryResolverEnv, ClientEnv, PlatformEnv, ProjectConfigEnv, VersionEnv,
+    BinaryCacheEnv, BinaryResolverEnv, ClientEnv, LoggerEnv, PlatformEnv, ProjectConfigEnv,
+    VersionEnv,
 };
 use crate::lib::error::DfxResult;
 use clap::ArgMatches;
@@ -39,7 +40,13 @@ impl<T> CliCommand<T> {
 /// Returns all builtin commands understood by DFx.
 pub fn builtin<T>() -> Vec<CliCommand<T>>
 where
-    T: BinaryCacheEnv + BinaryResolverEnv + ClientEnv + PlatformEnv + ProjectConfigEnv + VersionEnv,
+    T: BinaryCacheEnv
+        + BinaryResolverEnv
+        + ClientEnv
+        + LoggerEnv
+        + PlatformEnv
+        + ProjectConfigEnv
+        + VersionEnv,
 {
     vec![
         CliCommand::new(build::construct(), build::exec),

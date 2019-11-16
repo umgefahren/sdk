@@ -1,4 +1,5 @@
-use clap::{App, AppSettings};
+use clap::{App, AppSettings, Arg};
+use slog::Drain;
 
 mod commands;
 mod config;
@@ -12,6 +13,7 @@ use crate::lib::env::{
     PlatformEnv, ProjectConfigEnv, VersionEnv,
 };
 use crate::lib::error::*;
+use crate::lib::message::UserMessage;
 
 fn cli<T>(env: &T) -> App<'_, '_>
 where
@@ -25,6 +27,14 @@ where
             commands::builtin()
                 .into_iter()
                 .map(|x: CliCommand<InProjectEnvironment>| x.get_subcommand().clone()),
+        )
+        .arg(
+            Arg::with_name("verbose")
+                .long("version")
+                .short("v")
+                .takes_value(false)
+                .multiple(true) // Each one increase the log level.
+                .help(UserMessage::Verbose.to_str()),
         )
 }
 
@@ -57,17 +67,22 @@ where
 }
 
 fn main() {
+    let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
+    let logger = slog::Logger::root(slog_term::FullFormat::new(plain).build().fuse(), slog::o!());
+
     let result = {
         if Config::from_current_dir().is_ok() {
             // Build the environment.
             let env = InProjectEnvironment::from_current_dir()
-                .expect("Could not create an project environment object.");
+                .expect("Could not create an project environment object.")
+                .with_logger(logger);
             let matches = cli(&env).get_matches();
 
             exec(&env, &matches, &(cli(&env)))
         } else {
             let env = GlobalEnvironment::from_current_dir()
-                .expect("Could not create an global environment object.");
+                .expect("Could not create an global environment object.")
+                .with_logger(logger);
             let matches = cli(&env).get_matches();
 
             exec(&env, &matches, &(cli(&env)))

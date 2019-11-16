@@ -2,6 +2,7 @@ use crate::config::dfinity::Config;
 use crate::config::{cache, dfx_version};
 use crate::lib::api_client::{Client, ClientConfig};
 use crate::lib::error::DfxResult;
+use slog::Logger;
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
@@ -39,12 +40,18 @@ pub trait VersionEnv {
     fn get_version(&self) -> &String;
 }
 
+/// An environment that can get a logger.
+pub trait LoggerEnv {
+    fn get_logger(&self) -> &Logger;
+}
+
 /// An environment that is inside a project.
 pub struct InProjectEnvironment {
     version: String,
     config: Config,
     temp_dir: PathBuf,
     client: RefCell<Option<Client>>,
+    logger: Logger,
 }
 
 impl PlatformEnv for InProjectEnvironment {
@@ -112,6 +119,12 @@ impl VersionEnv for InProjectEnvironment {
     }
 }
 
+impl LoggerEnv for InProjectEnvironment {
+    fn get_logger(&self) -> &Logger {
+        &self.logger
+    }
+}
+
 impl InProjectEnvironment {
     pub fn from_current_dir() -> DfxResult<InProjectEnvironment> {
         let config = Config::from_current_dir()?;
@@ -124,14 +137,21 @@ impl InProjectEnvironment {
                 .get_dfx()
                 .unwrap_or_else(|| dfx_version().to_owned()),
             config,
+            logger: Logger::root(slog::Discard, slog::o!()),
             temp_dir,
             client: RefCell::new(None),
         })
+    }
+
+    pub fn with_logger(mut self, logger: Logger) -> Self {
+        self.logger = logger;
+        self
     }
 }
 
 pub struct GlobalEnvironment {
     version: String,
+    logger: Logger,
 }
 
 impl PlatformEnv for GlobalEnvironment {
@@ -182,10 +202,22 @@ impl VersionEnv for GlobalEnvironment {
     }
 }
 
+impl LoggerEnv for GlobalEnvironment {
+    fn get_logger(&self) -> &Logger {
+        &self.logger
+    }
+}
+
 impl GlobalEnvironment {
     pub fn from_current_dir() -> DfxResult<GlobalEnvironment> {
         Ok(GlobalEnvironment {
             version: dfx_version().to_owned(),
+            logger: Logger::root(slog::Discard, slog::o!()),
         })
+    }
+
+    pub fn with_logger(mut self, logger: Logger) -> Self {
+        self.logger = logger;
+        self
     }
 }

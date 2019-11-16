@@ -26,11 +26,14 @@ pub enum UserMessage {
     NodeAddress,
     StartBackground,
     StartIDE,
+    Verbose,
 }
 
 impl UserMessage {
     pub fn to_str(&self) -> &str {
         match &self {
+            // Global
+            UserMessage::Verbose => "Increment the level of logging.",
 
             // dfx canister call
             UserMessage::CallCanister => "Calls a method on a deployed canister.",
