@@ -1,10 +1,11 @@
-use crate::lib::env::{BinaryCacheEnv, PlatformEnv, VersionEnv};
+use crate::lib::env::{BinaryCacheEnv, LoggerEnv, PlatformEnv, VersionEnv};
 use crate::lib::error::{DfxError, DfxResult};
 use crate::lib::message::UserMessage;
 use crate::util::assets;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use console::style;
 use indicatif::HumanBytes;
+use slog::info;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
@@ -83,7 +84,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P, dry_run: bool) -> DfxResult {
 
 pub fn exec<T>(env: &T, args: &ArgMatches<'_>) -> DfxResult
 where
-    T: BinaryCacheEnv + PlatformEnv + VersionEnv,
+    T: BinaryCacheEnv + LoggerEnv + PlatformEnv + VersionEnv,
 {
     let dry_run = args.is_present(DRY_RUN);
     let project_name = Path::new(args.value_of(PROJECT_NAME).unwrap());
@@ -93,10 +94,11 @@ where
     }
 
     let dfx_version = env.get_version();
+    let l = env.get_logger();
 
-    eprintln!(r#"Creating new project "{}"..."#, project_name.display());
+    info!(l, r#"Creating new project "{}"..."#, project_name.display());
     if dry_run {
-        eprintln!(r#"Running in dry mode. Nothing will be committed to disk."#);
+        info!(l, "Running in dry mode. Nothing will be committed to disk.");
     }
 
     let mut new_project_files = assets::new_project_files()?;
@@ -134,7 +136,7 @@ where
             .current_dir(&project_name)
             .status();
         if init_status.is_ok() && init_status.unwrap().success() {
-            eprintln!("Creating git repository...");
+            info!(l, "Creating git repository...");
             std::process::Command::new("git")
                 .arg("add")
                 .current_dir(&project_name)
@@ -150,7 +152,8 @@ where
     }
 
     // Print welcome message.
-    eprintln!(
+    info!(
+        l,
         // This needs to be included here because we cannot use the result of a function for
         // the format!() rule (and so it cannot be moved in the util::assets module).
         include_str!("../../assets/welcome.txt"),

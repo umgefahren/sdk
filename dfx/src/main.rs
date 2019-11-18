@@ -10,7 +10,7 @@ use crate::commands::CliCommand;
 use crate::config::dfinity::Config;
 use crate::lib::env::{
     BinaryCacheEnv, BinaryResolverEnv, ClientEnv, GlobalEnvironment, InProjectEnvironment,
-    PlatformEnv, ProjectConfigEnv, VersionEnv,
+    LoggerEnv, PlatformEnv, ProjectConfigEnv, VersionEnv,
 };
 use crate::lib::error::*;
 use crate::lib::message::UserMessage;
@@ -40,7 +40,13 @@ where
 
 fn exec<T>(env: &T, args: &clap::ArgMatches<'_>, cli: &App<'_, '_>) -> DfxResult
 where
-    T: BinaryCacheEnv + VersionEnv + BinaryResolverEnv + ClientEnv + PlatformEnv + ProjectConfigEnv,
+    T: BinaryCacheEnv
+        + BinaryResolverEnv
+        + ClientEnv
+        + LoggerEnv
+        + PlatformEnv
+        + ProjectConfigEnv
+        + VersionEnv,
 {
     let (name, subcommand_args) = match args.subcommand() {
         (name, Some(args)) => (name, args),
@@ -67,7 +73,7 @@ where
 }
 
 fn main() {
-    let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
+    let plain = slog_term::PlainSyncDecorator::new(std::io::stderr());
     let logger = slog::Logger::root(slog_term::FullFormat::new(plain).build().fuse(), slog::o!());
 
     let result = {
