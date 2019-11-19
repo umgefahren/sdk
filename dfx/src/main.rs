@@ -1,5 +1,5 @@
 use clap::{App, AppSettings, Arg};
-use slog::Drain;
+use slog::{error, Drain};
 
 mod commands;
 mod config;
@@ -73,9 +73,16 @@ where
 }
 
 fn main() {
-    let plain = slog_term::PlainSyncDecorator::new(std::io::stderr());
-    let logger = slog::Logger::root(slog_term::FullFormat::new(plain).build().fuse(), slog::o!());
+    //    let decorator = slog_term::TermDecorator::new().build();
+    //    let drain = slog_term::CompactFormat::new(decorator).build().fuse();
+    //    let plain = slog_term::PlainSyncDecorator::new(std::io::stderr());
+    //    let drain = slog_term::CompactFormat::new(plain).build().fuse();
+    let decorator = slog_term::PlainDecorator::new(std::io::stdout());
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
 
+    let logger = slog::Logger::root(drain, slog::o!());
+    slog::info!(logger, "hello");
     let result = {
         if Config::from_current_dir().is_ok() {
             // Build the environment.
@@ -96,40 +103,53 @@ fn main() {
     };
 
     if let Err(err) = result {
+        let decorator = slog_term::PlainDecorator::new(std::io::stderr());
+        let drain = slog_term::CompactFormat::new(decorator).build().fuse();
+        let drain = slog_async::Async::new(drain).build().fuse();
+        let logger = slog::Logger::root(drain, slog::o!());
         match err {
             DfxError::BuildError(err) => {
-                eprintln!("Build failed. Reason:");
-                eprintln!("  {}", err);
+                error!(logger, "Build failed. Reason:");
+                error!(logger, "  {}", err);
             }
             DfxError::IdeError(msg) => {
-                eprintln!("The Motoko Language Server returned an error:\n{}", msg);
+                error!(
+                    logger,
+                    "The Motoko Language Server returned an error:\n{}", msg
+                );
             }
             DfxError::UnknownCommand(command) => {
-                eprintln!("Unknown command: {}", command);
+                error!(logger, "Unknown command: {}", command);
             }
             DfxError::ProjectExists => {
-                eprintln!("Cannot create a new project because the directory already exists.");
+                error!(
+                    logger,
+                    "Cannot create a new project because the directory already exists."
+                );
             }
             DfxError::CommandMustBeRunInAProject => {
-                eprintln!("Command must be run in a project directory (with a dfx.json file).");
+                error!(
+                    logger,
+                    "Command must be run in a project directory (with a dfx.json file)."
+                );
             }
             DfxError::ClientError(code, message) => {
-                eprintln!("Client error (code {}): {}", code, message);
+                error!(logger, "Client error (code {}): {}", code, message);
             }
             DfxError::Unknown(err) => {
-                eprintln!("Unknown error: {}", err);
+                error!(logger, "Unknown error: {}", err);
             }
             DfxError::ConfigPathDoesNotExist(config_path) => {
-                eprintln!("Config path does not exist: {}", config_path);
+                error!(logger, "Config path does not exist: {}", config_path);
             }
             DfxError::InvalidArgument(e) => {
-                eprintln!("Invalid argument: {}", e);
+                error!(logger, "Invalid argument: {}", e);
             }
             DfxError::InvalidData(e) => {
-                eprintln!("Invalid data: {}", e);
+                error!(logger, "Invalid data: {}", e);
             }
             err => {
-                eprintln!("An error occured:\n{:#?}", err);
+                error!(logger, "An error occured:\n{:#?}", err);
             }
         }
 
