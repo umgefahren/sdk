@@ -15,6 +15,12 @@ pub fn construct() -> App<'static, 'static> {
     SubCommand::with_name("build")
         .about(UserMessage::BuildCanister.to_str())
         .arg(Arg::with_name("canister").help(UserMessage::CanisterName.to_str()))
+        .arg(
+            Arg::with_name("watch")
+                .long("watch")
+                .takes_value(false)
+                .help(UserMessage::BuildWatch.to_str()),
+        )
 }
 
 /// Compile a motoko file.
@@ -151,7 +157,7 @@ fn build_canister_js(
     Ok(())
 }
 
-fn build_file<T>(env: &T, config: &Config, name: &str) -> DfxResult
+fn build_canister<T>(env: &T, config: &Config, name: &str) -> DfxResult
 where
     T: BinaryResolverEnv,
 {
@@ -235,14 +241,17 @@ where
         .get_config()
         .ok_or(DfxError::CommandMustBeRunInAProject)?;
 
+    let watch_mode = args.is_present("watch");
+
     // Get the canister name (if any).
     if let Some(canister_name) = args.value_of("canister") {
         println!("Building {}...", canister_name);
-        build_file(env, &config, &canister_name)?;
+        build_canister(env, &config, &canister_name)?;
     } else if let Some(canisters) = &config.get_config().canisters {
+        if watch_mode 
         for k in canisters.keys() {
             println!("Building {}...", k);
-            build_file(env, &config, &k)?;
+            build_canister(env, &config, &k)?;
         }
     }
 
@@ -374,7 +383,7 @@ mod tests {
         )
         .unwrap();
 
-        build_file(&env, &config, "name").expect("Function failed - build_file");
+        build_canister(&env, &config, "name").expect("Function failed - build_file");
         assert!(output_path.exists());
     }
 }

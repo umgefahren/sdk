@@ -21,8 +21,12 @@ pub enum UserMessage {
     QueryCanister,
     RequestCallStatus,
     RequestId,
+
+    // dfx build
     BuildCanister,
     CanisterName,
+    BuildWatch,
+
     ConfigureOptions,
     OptionName,
     OptionValue,
@@ -71,6 +75,7 @@ impl UserMessage {
 
             // dfx build
             UserMessage::BuildCanister => "Builds all or specific canisters from the code in your project. By default, all canisters are built.",
+            UserMessage::BuildWatch => "Watches the build system for changes, and rebuild.",
 
             // dfx config
             UserMessage::ConfigureOptions => "Configures project options for your currently-selected project.",
