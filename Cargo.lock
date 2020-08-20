@@ -1672,8 +1672,8 @@ dependencies = [
 
 [[package]]
 name = "ic-agent"
-version = "0.6.0"
-source = "git+ssh://git@github.com/dfinity-lab/agent-rust.git?branch=next#4b8871323718d8f67b7e42df4ee176eb708fff71"
+version = "0.1.0"
+source = "git+ssh://git@github.com/dfinity-lab/agent-rust.git?branch=next#db4ef2d3b18cd906794dc119cb8ed627286059da"
 dependencies = [
  "async-trait",
  "base32",
@@ -1692,6 +1692,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_cbor 0.11.1",
+ "thiserror",
  "url 2.1.1",
  "webpki-roots 0.20.0",
 ]
@@ -1712,7 +1713,7 @@ dependencies = [
 [[package]]
 name = "ic-types"
 version = "0.1.0"
-source = "git+ssh://git@github.com/dfinity-lab/agent-rust.git?branch=next#4b8871323718d8f67b7e42df4ee176eb708fff71"
+source = "git+ssh://git@github.com/dfinity-lab/agent-rust.git?branch=next#db4ef2d3b18cd906794dc119cb8ed627286059da"
 dependencies = [
  "base32",
  "crc32fast",

@@ -283,3 +283,9 @@ impl From<walkdir::Error> for DfxError {
 }
 
 impl actix_web::error::ResponseError for DfxError {}
+
+impl From<std::string::String> for DfxError {
+    fn from(err: std::string::String) -> DfxError {
+        DfxError::Unknown(err)
+    }
+}

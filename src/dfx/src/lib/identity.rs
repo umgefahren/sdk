@@ -17,15 +17,15 @@ impl Identity {
 }
 
 impl ic_agent::Identity for Identity {
-    fn sender(&self) -> Result<Principal, AgentError> {
+    fn sender(&self) -> Result<Principal, String> {
         Ok(self.0.sender())
     }
 
-    fn sign(&self, blob: &[u8], _: &Principal) -> Result<Signature, AgentError> {
+    fn sign(&self, blob: &[u8], _: &Principal) -> Result<Signature, String> {
         let signature_tuple = self
             .0
             .sign(blob)
-            .map_err(|e| AgentError::SigningError(e.to_string()))?;
+            .map_err(|e| e.to_string())?;
 
         let signature = Blob::from(signature_tuple.signature.clone());
         let public_key = Blob::from(signature_tuple.public_key);

@@ -13,16 +13,16 @@ ring = "0.16.11"
 serde = { version = "1.0", features = ["derive"] }
 
 [dependencies.ic-agent]
-version = "0.6"
+version = "0.1.0"
 git = "ssh://git@github.com/dfinity-lab/agent-rust.git"
 branch = "next"
-rev = "4b8871323718d8f67b7e42df4ee176eb708fff71"
+rev = "db4ef2d3b18cd906794dc119cb8ed627286059da"
 
 [dependencies.ic-types]
 version = "0.1.0"
 git = "ssh://git@github.com/dfinity-lab/agent-rust.git"
 branch = "next"
-rev = "4b8871323718d8f67b7e42df4ee176eb708fff71"
+rev = "db4ef2d3b18cd906794dc119cb8ed627286059da"
 
 [dev-dependencies]
 serde_cbor = "0.10"

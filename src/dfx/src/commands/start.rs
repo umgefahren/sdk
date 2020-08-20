@@ -51,13 +51,14 @@ pub fn construct() -> App<'static, 'static> {
 fn ping_and_wait(frontend_url: &str) -> DfxResult {
     let mut runtime = Runtime::new().expect("Unable to create a runtime");
 
+    println!("frontend_url is {:?}", frontend_url.to_string());
     let agent = Agent::new(AgentConfig {
-        url: frontend_url,
+        url: frontend_url.to_string(),
         ..AgentConfig::default()
     })?;
 
     runtime
-        .block_on(agent.ping(create_waiter()))
+        .block_on(agent.status())
         .map(|_| ())
         .map_err(DfxError::from)
 }
